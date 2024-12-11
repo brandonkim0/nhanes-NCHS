@@ -1,0 +1,148 @@
+---
+title: "Part 3"
+author: "Group 19"
+date: "2024-12-06"
+output: pdf_document
+---
+
+```{r}
+install.packages("NHANES")
+library(NHANES)
+```
+
+```{r}
+dataset = NHANES # raw
+```
+```{r}
+cleaned_data = na.omit(dataset[c("Pulse", "Age", "BMI","SleepHrsNight", "PhysActiveDays", "HealthGen")])
+rownames(cleaned_data) = NULL
+summary(cleaned_data)
+plot(cleaned_data)
+```
+```{r}
+## Create Dummy Variable for HealthGen
+HealthPoor = as.integer(cleaned_data["HealthGen"] == "Poor")
+HealthFair = as.integer(cleaned_data["HealthGen"] == "Fair")
+HealthGood = as.integer(cleaned_data["HealthGen"] == "Good")
+HealthVgood = as.integer(cleaned_data["HealthGen"] == "Vgood")
+HealthExcellent = as.integer(cleaned_data["HealthGen"] == "Excellent")
+
+converted_data = data.frame(cleaned_data[, c(1,2,3,4,5)], HealthPoor, HealthFair, HealthGood, HealthVgood, HealthExcellent)
+
+## n = 3440
+n = nrow(converted_data)
+
+summary(converted_data)
+```
+```{r}
+fit = lm(Pulse ~ Age + BMI + SleepHrsNight + PhysActiveDays + 
+   HealthPoor + HealthFair + HealthVgood + HealthExcellent, data = converted_data)
+summary(fit)
+```
+```{r}
+## Residual vs Fitted
+plot(fit, which=1)
+
+## Standardized Residual vs Fitted
+plot(fitted(fit), rstandard(fit), 
+     main ="Standardized Residual vs Fitted", 
+     xlab = "Fitted", 
+     ylab = "Standardized Residuals")
+abline(h = 0, col="red", lty = 1)
+
+## Histogram for Standardized Residuals
+hist(rstandard(fit), 
+     xlab = "Standardized Residuals",
+     main = "Standardized Residuals Histogram")
+
+## QQ Plot
+plot(fit, which=2)
+```
+```{r}
+## Apply Log Transformation
+transformed_fit = lm(log(Pulse) ~ Age + BMI + SleepHrsNight + PhysActiveDays + 
+   HealthPoor + HealthFair + HealthVgood + HealthExcellent, data = converted_data)
+```
+```{r}
+## Residual vs Fitted
+plot(transformed_fit, which=1)
+
+## Standardized Residual vs Fitted
+plot(fitted(transformed_fit), rstandard(transformed_fit), 
+     main ="Standardized Residual vs Fitted", 
+     xlab = "Fitted", 
+     ylab = "Standardized Residuals")
+abline(h = 0, col="red", lty = 1)
+
+## Histogram for Standardized Residuals
+hist(rstandard(transformed_fit), 
+     xlab = "Standardized Residuals",
+     main = "Standardized Residuals Histogram")
+
+## QQ Plot
+plot(transformed_fit, which=2)
+```
+```{r}
+## Overall F-test and t-test
+summary(transformed_fit)
+```
+```{r}
+## 95% CI
+confint(transformed_fit, level = .95)
+```
+```{r}
+## VIF
+install.packages("car")
+library(car)
+vif(fit_reduced)
+vif(transformed_fit)
+```
+```{r}
+## ANOVA Test Reduced Model vs Full Model
+fit_reduced = lm(log(Pulse) ~ Age + BMI + SleepHrsNight + 
+   HealthPoor + HealthFair + HealthVgood + HealthExcellent, data = converted_data)
+anova(fit_reduced, transformed_fit)
+```
+```{r}
+## ANOVA Test Reduced Model vs Reduced Model 2
+fit_reduced2 = lm(log(Pulse) ~ Age + BMI + SleepHrsNight, data = converted_data)
+anova(fit_reduced2, fit_reduced)
+```
+```{r}
+## Plot Cook's Distance
+summary(fit_reduced)
+plot(fit_reduced, which = 4)
+```
+```{r}
+## Influential Points
+converted_data[c(579, 2748, 3357), ]
+```
+```{r}
+## AIC
+AIC(transformed_fit, k = 9)
+AIC(fit_reduced, k = 8)
+```
+```{r}
+## BIC
+extractAIC(transformed_fit, k = log(n))
+extractAIC(fit_reduced, k = log(n))
+```
+
+```{r}
+par(mfrow = c(2, 2))
+## Residual vs Fitted
+plot(fit_reduced, which=1)
+
+## Histogram for Standardized Residuals
+hist(rstandard(fit_reduced), 
+     xlab = "Standardized Residuals",
+     main = "Standardized Residuals Histogram",
+     cex.main = 1.2,
+     font.main = 1)
+
+## QQ Plot
+plot(fit_reduced, which=2)
+
+## Cook's Distance
+plot(fit_reduced, which=4)
+```
